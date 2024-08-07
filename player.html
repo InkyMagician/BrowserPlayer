@@ -3,28 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VLC-based Video Player</title>
+    <title>Video Player with .TS Support, Preview, and Error Handling</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.4.8/hls.min.js"></script>
     <style>
-        #videoContainer { width: 640px; height: 380px; margin: 20px auto; }
-        #vlcPlayer { width: 100%; height: 100%; }
-        #fileInput { margin-top: 10px; }
+        #videoContainer { width: 640px; margin: 20px auto; position: relative; }
+        #videoElement { width: 100%; }
+        #seekBar { width: 100%; height: 20px; background: #ddd; margin-top: 10px; position: relative; cursor: pointer; }
+        #seekBarFill { height: 100%; background: #4CAF50; width: 0; }
+        #previewContainer { position: absolute; bottom: 30px; background: rgba(0,0,0,0.7); padding: 5px; display: none; overflow: hidden; }
+        #previewVideo { width: 160px; height: 90px; }
         #errorLog { margin-top: 10px; color: red; }
     </style>
 </head>
 <body>
     <div id="videoContainer">
-        <object id="vlcPlayer" type="application/x-vlc-plugin" width="640" height="360">
-            <param name="autoplay" value="false" />
-            <param name="controls" value="true" />
-        </object>
+        <video id="videoElement" controls>
+            Your browser does not support the video tag.
+        </video>
+        <input type="file" id="fileInput" accept="video/*,.ts">
+        <div id="seekBar">
+            <div id="seekBarFill"></div>
+        </div>
+        <div id="previewContainer">
+            <video id="previewVideo" muted></video>
+        </div>
     </div>
-    <input type="file" id="fileInput" accept="video/*,.ts">
     <div id="errorLog"></div>
 
     <script>
-        const vlcPlayer = document.getElementById('vlcPlayer');
+        const videoElement = document.getElementById('videoElement');
         const fileInput = document.getElementById('fileInput');
+        const seekBar = document.getElementById('seekBar');
+        const seekBarFill = document.getElementById('seekBarFill');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewVideo = document.getElementById('previewVideo');
         const errorLog = document.getElementById('errorLog');
+
+        let hls;
 
         function logError(message) {
             console.error(message);
@@ -33,16 +48,75 @@
 
         fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
-            if (file) {
-                const fileURL = URL.createObjectURL(file);
-                try {
-                    vlcPlayer.playlist.clear();
-                    const itemId = vlcPlayer.playlist.add(fileURL, file.name, []);
-                    vlcPlayer.playlist.playItem(itemId);
-                } catch (error) {
-                    logError('Error playing video: ' + error.message);
+            const videoURL = URL.createObjectURL(file);
+            
+            if (file.name.endsWith('.ts')) {
+                if (Hls.isSupported()) {
+                    hls = new Hls();
+                    hls.loadSource(videoURL);
+                    hls.attachMedia(videoElement);
+                    hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                        videoElement.play().catch(e => logError('Error playing video: ' + e.message));
+                    });
+                    hls.on(Hls.Events.ERROR, function(event, data) {
+                        logError('HLS error: ' + data.type + ' - ' + data.details);
+                    });
+
+                    // For preview
+                    const previewHls = new Hls();
+                    previewHls.loadSource(videoURL);
+                    previewHls.attachMedia(previewVideo);
+                    previewHls.on(Hls.Events.ERROR, function(event, data) {
+                        logError('Preview HLS error: ' + data.type + ' - ' + data.details);
+                    });
+                } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                    videoElement.src = videoURL;
+                    previewVideo.src = videoURL;
+                } else {
+                    logError('HLS is not supported in this browser.');
                 }
+            } else {
+                videoElement.src = videoURL;
+                previewVideo.src = videoURL;
             }
+        });
+
+        videoElement.addEventListener('error', function(e) {
+            logError('Video error: ' + e.target.error.message);
+        });
+
+        previewVideo.addEventListener('error', function(e) {
+            logError('Preview video error: ' + e.target.error.message);
+        });
+
+        videoElement.addEventListener('timeupdate', function() {
+            const progress = (videoElement.currentTime / videoElement.duration) * 100;
+            seekBarFill.style.width = `${progress}%`;
+        });
+
+        seekBar.addEventListener('mousemove', function(e) {
+            const rect = seekBar.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            const previewTime = pos * videoElement.duration;
+
+            previewVideo.currentTime = previewTime;
+            previewContainer.style.display = 'block';
+            previewContainer.style.left = `${e.clientX - rect.left - 80}px`;
+        });
+
+        seekBar.addEventListener('mouseout', function() {
+            previewContainer.style.display = 'none';
+        });
+
+        seekBar.addEventListener('click', function(e) {
+            const rect = seekBar.getBoundingClientRect();
+            const pos = (e.clientX - rect.left) / rect.width;
+            videoElement.currentTime = pos * videoElement.duration;
+        });
+
+        // Ensure the preview video is ready
+        previewVideo.addEventListener('loadedmetadata', function() {
+            previewVideo.muted = true;
         });
     </script>
 </body>
