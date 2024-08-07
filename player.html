@@ -3,104 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tsotne Chimakadze - Resume</title>
+    <title>VLC-based Video Player</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        h1 {
-            color: #2c3e50;
-            border-bottom: 2px solid #2c3e50;
-            padding-bottom: 10px;
-        }
-        h2 {
-            color: #34495e;
-            margin-top: 20px;
-        }
-        .contact-info {
-            margin-bottom: 20px;
-        }
-        .section {
-            margin-bottom: 20px;
-        }
-        ul {
-            padding-left: 20px;
-        }
+        #videoContainer { width: 640px; height: 380px; margin: 20px auto; }
+        #vlcPlayer { width: 100%; height: 100%; }
+        #fileInput { margin-top: 10px; }
+        #errorLog { margin-top: 10px; color: red; }
     </style>
 </head>
 <body>
-    <h1>Tsotne Chimakadze</h1>
-    <div class="contact-info">
-        Tbilisi, Georgia | +995 579 158 394 | Tsotne.chimakadze@gmail.com
+    <div id="videoContainer">
+        <object id="vlcPlayer" type="application/x-vlc-plugin" width="640" height="360">
+            <param name="autoplay" value="false" />
+            <param name="controls" value="true" />
+        </object>
     </div>
-    <div class="section">
-        <h2>Professional Summary</h2>
-        <p>Passionate and self-motivated IT professional with a strong foundation in computer science and hands-on experience in IT support since a young age. Eager to leverage over a decade of technical interest and skills to excel as a Junior IT Support Specialist. Multilingual professional committed to continuous learning and problem-solving.</p>
-    </div>
-    
-    <div class="section">
-        <h2>Education</h2>
-        <p><strong>Bachelor's Degree in Computer Science and Engineering</strong><br>
-        University of Information Science and Technology, Ohrid, North Macedonia<br>
-        Graduated: 2020</p>
-    </div>
-    
-    <div class="section">
-        <h2>Skills</h2>
-        <ul>
-            <li>IT Support (Hardware and Software troubleshooting)</li>
-            <li>Customer Service</li>
-            <li>Programming (GitHub: https://github.com/InkyMagician)</li>
-            <li>Windows and Linux systems</li>
-            <li>Network troubleshooting</li>
-            <li>Excellent communication skills</li>
-        </ul>
-    </div>
-    
-    <div class="section">
-        <h2>Languages</h2>
-        <ul>
-            <li>English (Native proficiency)</li>
-            <li>Russian (Native proficiency)</li>
-            <li>Georgian (Native proficiency)</li>
-            <li>Macedonian (Conversational)</li>
-        </ul>
-    </div>
-    
-    <div class="section">
-        <h2>Relevant Experience</h2>
-        <p><strong>IT Support Technician</strong><br>
-        Local Internet Cafe, Tbilisi, Georgia<br>
-        2011 - 2013</p>
-        <ul>
-            <li>Maintained and troubleshot computer systems and network infrastructure for the internet cafe at a young age, demonstrating early technical aptitude</li>
-            <li>Provided technical support to customers, resolving both hardware and software issues</li>
-            <li>Improved customer satisfaction through prompt and effective problem resolution</li>
-            <li>Developed strong multitasking skills by managing cafe operations while assisting customers</li>
-        </ul>
-    </div>
-    
-    <div class="section">
-        <h2>Projects</h2>
-        <p>Actively contributing to personal programming projects on GitHub, demonstrating a commitment to continuous learning and skill development in various programming languages and technologies.</p>
-    </div>
-    
-    <div class="section">
-        <h2>Additional Information</h2>
-        <ul>
-            <li>Passionate about technology since the age of 14, with over a decade of personal interest and growth in IT</li>
-            <li>Particular interest in system administration and software development</li>
-            <li>Quick learner with a strong ability to adapt to new technologies and environments</li>
-            <li>Excellent problem-solving skills with a customer-focused approach</li>
-        </ul>
-    </div>
-    
-    <div class="section">
-        <h2>References</h2>
-        <p>Available upon request</p>
-    </div>
+    <input type="file" id="fileInput" accept="video/*,.ts">
+    <div id="errorLog"></div>
+
+    <script>
+        const vlcPlayer = document.getElementById('vlcPlayer');
+        const fileInput = document.getElementById('fileInput');
+        const errorLog = document.getElementById('errorLog');
+
+        function logError(message) {
+            console.error(message);
+            errorLog.innerHTML += message + '<br>';
+        }
+
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const fileURL = URL.createObjectURL(file);
+                try {
+                    vlcPlayer.playlist.clear();
+                    const itemId = vlcPlayer.playlist.add(fileURL, file.name, []);
+                    vlcPlayer.playlist.playItem(itemId);
+                } catch (error) {
+                    logError('Error playing video: ' + error.message);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
